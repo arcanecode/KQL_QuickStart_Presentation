@@ -50,6 +50,11 @@ Perf |
 where CounterName == "Free Megabytes" |
 top 100 by CounterValue
 
+
+//------------------------------------------------------------------------------
+// Syntax Flexibility
+//------------------------------------------------------------------------------
+
 // Syntax is flexible - Pipe can be at the start
 Perf
 | where CounterName == "Free Megabytes"
@@ -65,15 +70,262 @@ Perf | where CounterName == "Free Megabytes" | top 100 by CounterValue
 
 // You do have intellisense! (Type out the above query to demonstrate)
 
+//------------------------------------------------------------------------------
+// Some notes on case
+//------------------------------------------------------------------------------
+// KQL is case senstive, unlike SQL. Perf is not the same as perf or PERF
+// Likewise with column names. CounterName, not countername or COUNTERNAME
+
+// Commands are also case senstive. top works, TOP or Top does not
+
+//------------------------------------------------------------------------------
+// Some more on where
+//------------------------------------------------------------------------------
+
+// Example 1 - Basic Where
+Perf
+| where TimeGenerated >= ago(1h)
+
+// Example 2 - Where with Logical Joins
+Perf
+| where TimeGenerated  >= ago(1h)
+    and CounterName == "Bytes Received/sec"
+
+// Example 3 - Multiple Ands Allowed
+Perf
+| where TimeGenerated  >= ago(1h)
+    and CounterName == "Bytes Received/sec"
+    and CounterValue > 0
 
 
-// KQL is case senstive, unlike SQL
-// Perf is not the same as perf or PERF
-// Likewise with column names
-// CounterName, not countername or COUNTERNAME
+// Example 4 - OR logic is allowed too!
+Perf
+| where TimeGenerated  >= ago(1h)
+    and (CounterName == "Bytes Received/sec"
+         or
+         CounterName == "% Processor Time"
+        )
 
-// Commands are also case senstive
-// top works, TOP or Top does not
+// Example 5 -  Combining and's and or's
+Perf
+| where TimeGenerated  >= ago(1h)
+    and (CounterName == "Bytes Received/sec"
+         or
+         CounterName  == "% Processor Time"
+        )
+    and CounterValue > 0
+
+// Example 6 - Stacking Where Operators
+Perf
+| where TimeGenerated  >= ago(1h)
+| where (CounterName == "Bytes Received/sec"
+         or
+         CounterName  == "% Processor Time"
+        )
+| where CounterValue > 0
+
+//------------------------------------------------------------------------------
+// The search operator
+//------------------------------------------------------------------------------
+
+// Example 1 - Basic Search
+Perf
+| search "Memory"
+
+// Example 2 - Formatting
+Perf | search "Memory"
+
+// Example 3.1 - Case Sensitivity - Case Insensitive by Default
+Perf
+| search "memory"
+
+// Example 3.2 - Making Search Case Sensitive
+Perf
+| search kind=case_sensitive "memory"
+
+// Example 4 - Searching Everything In The Database
+// (Not recommended that you run this)
+search "Memory"
+
+// Example 5 - Search Multiple Tables
+search in (Perf, Event, Alert) "Memory"
+
+// Example 6 - Search A Specific Column
+Perf
+| search CounterName == "Available MBytes"
+
+// Example 7 - Search For Text Anywhere In The Column
+Perf
+| search CounterName:"MBytes"
+
+//------------------------------------------------------------------------------
+// Take
+//------------------------------------------------------------------------------
+
+// Examle 1 - Take Basics
+Perf
+| take 10
+
+// Example 2 - Building With Take
+// Step 1
+Perf
+| where TimeGenerated >= ago(1h)
+| take 5
+
+// Step 2
+Perf
+| where TimeGenerated >= ago(1h)
+    and CounterName == "Available MBytes"
+| take 5
+
+//------------------------------------------------------------------------------
+// Count
+//------------------------------------------------------------------------------
+
+// Example 1 - Count Basics
+Perf
+| count
+
+// Example 2 - Using Count Like Take
+Perf
+| where TimeGenerated  >= ago(1h)
+    and CounterName == "Bytes Received/sec"
+    and CounterValue > 0
+| count
+
+// Example 3 - Pairing Down Your Data
+Perf
+| where TimeGenerated  >= ago(1h)
+| count
+
+Perf
+| where CounterName == "Bytes Received/sec"
+    and CounterValue > 0
+| count
+
+Perf
+| where TimeGenerated  >= ago(1h)
+    and CounterName == "Bytes Received/sec"
+    and CounterValue > 0
+| count
+
+//------------------------------------------------------------------------------
+// Summarize
+//------------------------------------------------------------------------------
+
+// Example 1 - Summarize Bssics
+Perf
+| summarize count() by CounterName
+
+// Example 2 - Summarize by two columns, flexible formatting
+Perf
+| summarize PerfCount = count()
+         by ObjectName
+          , CounterName
+
+// Example 3 - Summarize With Other Aggregations
+Perf
+| where CounterName == "% Free Space"
+| summarize NumberOfEntries  = count()
+          , AverageFreeSpace = avg(CounterValue)
+          , MinFreeSpace     = min(CounterValue)
+          , MaxFreeSpace     = max(CounterValue)
+          , SumFreeSpace     = sum(CounterValue)
+         by CounterName
+
+//------------------------------------------------------------------------------
+// Extend
+//------------------------------------------------------------------------------
+
+// Example 1 - Extend Basics
+Perf
+| where CounterName == "Free Megabytes"
+| take 10
+| extend FreeGB = CounterValue / 1000
+
+// Example 2 - Repeating A Column With Extend
+Perf
+| where CounterName == "Free Megabytes"
+| take 10
+| extend FreeGB = CounterValue / 1000
+       , FreeMB = CounterValue
+       , FreeKB = CounterValue * 1000
+
+// Example 3 - Created Calculated Values with Text Data
+Perf
+| take 10
+| extend ObjectCounter = strcat(ObjectName, " - ", CounterName)
+
+//------------------------------------------------------------------------------
+// Project
+//------------------------------------------------------------------------------
+
+// Example 1 - Project Basics
+Perf
+| take 100
+| project ObjectName
+        , CounterName
+        , InstanceName
+        , CounterValue
+        , TimeGenerated
 
 
+// Example 2 - Project and Extend
+Perf
+| where CounterName == "Free Megabytes"
+| take 100
+| project ObjectName
+        , CounterName
+        , InstanceName
+        , CounterValue
+        , TimeGenerated
+| extend FreeGB = CounterValue / 1000
+       , FreeMB = CounterValue
+       , FreeKB = CounterValue * 1000
 
+
+// Example 3 - Using Projected Columns In Calculations
+Perf
+| where CounterName == "Free Megabytes"
+| take 100
+| extend FreeGB = CounterValue / 1000
+       , FreeMB = CounterValue
+       , FreeKB = CounterValue * 1000
+| project ObjectName
+        , CounterName
+        , InstanceName
+        , TimeGenerated
+        , FreeGB
+        , FreeKB
+        , FreeMB
+
+
+// Example 4 - Projecting Calculated Values
+Perf
+| where CounterName == "Free Megabytes"
+| take 100
+| project ObjectName
+        , CounterName
+        , InstanceName
+        , TimeGenerated
+        , FreeGB = CounterValue / 1000
+        , FreeMB = CounterValue
+        , FreeKB = CounterValue * 1000
+
+//------------------------------------------------------------------------------
+// Top
+//------------------------------------------------------------------------------
+
+// Example 1 - Top Basics
+Perf
+| top 20 by TimeGenerated desc
+
+
+// Example 2 - Top Troubleshooting
+Perf
+| where TimeGenerated >= ago(10m)
+| where CounterName == "Free Megabytes"
+| distinct Computer
+         , CounterName
+         , CounterValue
+| top 10 by CounterValue asc
