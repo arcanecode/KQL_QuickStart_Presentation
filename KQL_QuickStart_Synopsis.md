@@ -43,7 +43,7 @@ Below are useful links that are helpful to the KQL QuickStart presentation.
 
 ### Pluralsight Courses
 
-[Kusto Query Language: Getting Started](ohttps://app.pluralsight.com/library/courses/kusto-query-language-getting-started/table-of-contents)
+[Kusto Query Language: Getting Started](https://app.pluralsight.com/library/courses/kusto-query-language-getting-started/table-of-contents)
 
 [Kusto Query Language: Beginning Operators](https://app.pluralsight.com/library/courses/kusto-query-language-operators/table-of-contents)
 
